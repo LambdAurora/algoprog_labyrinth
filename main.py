@@ -156,7 +156,6 @@ def explore_route(laby):
                 # There is only one path, the labyrinth is impossible.
                 return []
             for n in neighbors:
-                print(n)
                 if not (n in explored_path) and (n != start):
                     new_point = n
                     break
