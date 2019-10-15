@@ -69,6 +69,14 @@ def find_end(laby):
 
 
 def find_neighbors(width, height, x, y):
+    """
+    Finds all of the neighbors around a point at the specified x and y coordinates.
+    :param width: The width of the space.
+    :param height: The height of the space.
+    :param x: The x coordinate to search around.
+    :param y: The y coordinate to search around.
+    :return: A list of the neighbors around the point.
+    """
     result = []
     for j in range(y - 1, y + 2):
         for i in range(x - 1, x + 2):
@@ -78,6 +86,12 @@ def find_neighbors(width, height, x, y):
 
 
 def find_acc_neighbors(laby, coord):
+    """
+    Finds accessible neighbors in the labyrinth at the specified coordinates.
+    :param laby: The labyrinth.
+    :param coord: The coordinates where to search the neighbors.
+    :return: A list of coordinates of the accessible neighbors.
+    """
     size = labyrinth_size(laby)
     neighbors = find_neighbors(size[0], size[1], coord[0], coord[1])
     result = []
@@ -89,6 +103,12 @@ def find_acc_neighbors(laby, coord):
 
 
 def not_contains(l1, l2):
+    """
+    Checks if the first list does not contain the second list.
+    :param l1: The first list.
+    :param l2: The second list.
+    :return: True if the first list does not contain the second list, else false.
+    """
     n = 0
     for j in l2:
         for i in l1:
@@ -98,26 +118,36 @@ def not_contains(l1, l2):
 
 
 def explore_route(laby):
+    # Start and end coordinates of the labyrinth.
     start = find_start(laby)
     end = find_end(laby)
+    # If there is no start or end then do not resolve the labyrinth.
     if not start or not end:
         return []
+    # Explored path represents the list of coordinates which are already explored and could lead to unsolvable paths.
     explored_path = [start]
-    route = [start]
+    # Current taken path.
+    path = [start]
+    # The last point in the path.
     last_point = start
     # While we don't reach the end we search a path
     while last_point != end:
         # We search the neighbors cases on the current position.
         neighbors = find_acc_neighbors(laby, last_point)
+        # The new point to go to.
         new_point = last_point
+        # Search for a new point in the neighbor points.
         for n in neighbors:
+            # If the point is already explored then search another.
             if not (n in explored_path) and (n != start):
                 new_point = n
                 break
-        # If there is no neighbors then we must go back.
+        # If there is no new neighbors then we must go back.
         if new_point == last_point:
+            # Old point is the last point with more than 2 directions available.
             old_point = last_point
-            for n in route:
+            # We search in the current path the last point with at least 1 unexplored direction.
+            for n in path:
                 nn = find_acc_neighbors(laby, n)
                 if len(nn) > 1 and not_contains(explored_path, nn):
                     old_point = n
@@ -130,12 +160,14 @@ def explore_route(laby):
                 if not (n in explored_path) and (n != start):
                     new_point = n
                     break
-            z = index_of(route, old_point)
-            route = route[0:z+1]
+            z = index_of(path, old_point)
+            # We go back in the path.
+            path = path[0:z+1]
+        # We change the last point to the new point and add it in the paths.
         last_point = new_point
-        route += [last_point]
+        path += [last_point]
         explored_path += [last_point]
-    return route
+    return path
 
 
 def draw_grid(mtx, size):
