@@ -1,11 +1,15 @@
 import Labyrinthe
 import graph
+import time
+
+grid_element_size = 4
 
 
-def draw_rectangle(x1, x2, y1, y2, color="Black"):
-    for x in range(x1, x2):
-        for y in range(y1, y2):
-            graph.plot(y, x, color)
+current_time_millis = lambda: int(round(time.time() * 1000))
+
+
+def draw_rectangle(x1, y1, size, color="black"):
+    return graph.fengra.create_rectangle(y1, x1, y1 + size, x1 + size, fill=color, width=0)
 
 
 def count_lines(mtx):
@@ -21,7 +25,7 @@ def get_image_size(mtx, size):
 
 
 def get_color(raw):
-    colors = ["Black", "White", "Blue", "Red", "Orange"]
+    colors = ["black", "white", "blue", "red", "orange"]
     return colors[raw]
 
 
@@ -117,6 +121,39 @@ def not_contains(l1, l2):
     return n != len(l2)
 
 
+def try_route(laby, start, end, ignore_points):
+    # Current taken path
+    path = [start]
+    graph_path = []
+    # The last point in the path.
+    last_point = start
+    while last_point != end:
+        neighbors = find_acc_neighbors(laby, last_point)
+        available_neighbors = []
+        for n in neighbors:
+            if not (n in ignore_points or n in path) and (n != start):
+                available_neighbors += [n]
+        if len(available_neighbors) == 0:
+            for i in range(len(graph_path)):
+                graph.fengra.supprime(graph_path[len(graph_path) - 1 - i])
+            return []
+        elif len(available_neighbors) > 1:
+            for i in range(len(available_neighbors)):
+                neighbor_route = try_route(laby, last_point, end, ignore_points + path + [available_neighbors[i]])
+                if neighbor_route:
+                    path += neighbor_route
+                    return path
+            for i in range(len(graph_path)):
+                graph.fengra.supprime(graph_path[len(graph_path) - 1 - i])
+            return []
+        else:
+            path += [last_point]
+            graph_path += [draw_rectangle(last_point[0] * grid_element_size, last_point[1] * grid_element_size, grid_element_size, "orange")]
+            graph.fengra.update()
+            last_point = available_neighbors[0]
+    return path
+
+
 def explore_route(laby):
     # Start and end coordinates of the labyrinth.
     start = find_start(laby)
@@ -124,49 +161,14 @@ def explore_route(laby):
     # If there is no start or end then do not resolve the labyrinth.
     if not start or not end:
         return []
-    # Explored path represents the list of coordinates which are already explored and could lead to unsolvable paths.
-    explored_path = [start]
-    # Current taken path.
-    path = [start]
-    # The last point in the path.
-    last_point = start
-    # While we don't reach the end we search a path
-    while last_point != end:
-        # We search the neighbors cases on the current position.
-        neighbors = find_acc_neighbors(laby, last_point)
-        # The new point to go to.
-        new_point = last_point
-        # Search for a new point in the neighbor points.
-        for n in neighbors:
-            # If the point is already explored then search another.
-            if not (n in explored_path) and (n != start):
-                new_point = n
-                break
-        # If there is no new neighbors then we must go back.
-        if new_point == last_point:
-            # Old point is the last point with more than 2 directions available.
-            old_point = last_point
-            # We search in the current path the last point with at least 1 unexplored direction.
-            for n in path:
-                nn = find_acc_neighbors(laby, n)
-                if len(nn) > 1 and not_contains(explored_path, nn):
-                    old_point = n
-                    neighbors = nn
-            if old_point == last_point:
-                # There is only one path, the labyrinth is impossible.
-                return []
-            for n in neighbors:
-                if not (n in explored_path) and (n != start):
-                    new_point = n
-                    break
-            z = index_of(path, old_point)
-            # We go back in the path.
-            path = path[0:z+1]
-        # We change the last point to the new point and add it in the paths.
-        last_point = new_point
-        path += [last_point]
-        explored_path += [last_point]
-    return path
+
+    # We try every paths.
+    for n in find_acc_neighbors(laby, start):
+        path = try_route(laby, n, end, [start])
+        if path:
+            return path
+
+    return []
 
 
 def draw_grid(mtx, size):
@@ -176,24 +178,28 @@ def draw_grid(mtx, size):
     :param size: The size of each grid content.
     """
     image_size = get_image_size(mtx, size)
-    graph.ouvre_fenetre(image_size[1], image_size[0])
+    if graph.fengra is None:
+        graph.ouvre_fenetre(image_size[0], image_size[1])
     for i in range(count_lines(mtx)):
         for j in range(len(mtx[i])):
             if mtx[i][j] != 1:
-                draw_rectangle(j * size, j * size + size, i * size, i * size + size, get_color(mtx[i][j]))
-    graph.attend_fenetre()
+                draw_rectangle(j * size, i * size, size, get_color(mtx[i][j]))
 
 
-#labyrinth = [[0, 0, 0, 0, 0, 0, 0],
+# labyrinth = [[0, 0, 0, 0, 0, 0, 0],
 #             [0, 2, 1, 1, 0, 1, 0],
 #             [0, 1, 0, 0, 0, 1, 0],
 #             [0, 1, 1, 1, 1, 3, 0],
 #             [0, 0, 0, 0, 0, 0, 0]]
-labyrinth = Labyrinthe.creer(50, 50, 10)
-draw_grid(labyrinth, 10)
+labyrinth = Labyrinthe.creer(175, 175, 3)
+draw_grid(labyrinth, grid_element_size)
+graph.fengra.attend_clic()
+start_time = current_time_millis()
 route = explore_route(labyrinth)
+print("Time: " + str(current_time_millis() - start_time) + "ms")
 if route:
     for n in route:
         if labyrinth[n[1]][n[0]] == 1:
             labyrinth[n[1]][n[0]] = 4
-draw_grid(labyrinth, 10)
+draw_grid(labyrinth, grid_element_size)
+graph.attend_fenetre()
